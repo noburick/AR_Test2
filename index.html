@@ -3,43 +3,73 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MindAR Quickstart</title>
-  <style>html,body{margin:0;overflow:hidden;background:#000}</style>
+  <title>MindAR Debug</title>
+  <style>
+    html,body{margin:0;overflow:hidden;background:#000}
+    #log{position:fixed;left:8px;top:8px;z-index:9999;
+         font:12px/1.4 monospace;color:#fff;max-width:92vw;white-space:pre-wrap}
+    #log b{color:#ff7b7b}
+    #ok{color:#9cff9c}
+  </style>
+  <script>
+    // 画面にログを出すヘルパ
+    const addLog = (msg, ok=false) => {
+      const box = document.getElementById('log');
+      const p = document.createElement('div');
+      p.innerHTML = ok ? `<span id="ok">✔</span> ${msg}` : `<b>✖</b> ${msg}`;
+      box.appendChild(p);
+      console.log(msg);
+    };
+    // window.onerror でJS例外を捕獲して表示
+    window.onerror = (m,s,l,c,e)=>{ addLog(`JS Error: ${m} @${s}:${l}`); };
+    // 必須ファイルの存在チェック（targets.mind / assets）
+    async function preflight(){
+      try{
+        const t = await fetch('./targets.mind', {cache:'no-store'});
+        addLog(t.ok ? 'targets.mind: OK' : `targets.mind: ${t.status} NOT FOUND`);
+      }catch(e){ addLog('targets.mind: fetch failed'); }
+      try{
+        const m = await fetch('./assets/model.glb', {cache:'no-store'});
+        addLog(m.ok ? 'assets/model.glb: OK' : `assets/model.glb: ${m.status} NOT FOUND`);
+      }catch(e){ addLog('assets/model.glb: fetch failed'); }
+      try{
+        const o = await fetch('./assets/overlay.png', {cache:'no-store'});
+        addLog(o.ok ? 'assets/overlay.png: OK' : `assets/overlay.png: ${o.status} NOT FOUND`);
+      }catch(e){ addLog('assets/overlay.png: fetch failed'); }
+      // HTTPS & カメラ許可ヒント
+      addLog(location.protocol === 'https:' ? 'HTTPS: OK' : 'HTTPS: NG（httpsで開いて！）', location.protocol==='https:');
+    }
+    document.addEventListener('DOMContentLoaded', preflight);
+  </script>
+
+  <!-- ライブラリ -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <!-- MindAR for A-Frame（CDN） -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 </head>
 <body>
-  <!-- targets.mind は同階層に置く -->
+  <div id="log">[診断ログ]</div>
+
+  <!-- MindAR本体（assets無しでも箱だけで動作確認できる） -->
   <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind;"
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: true"
     renderer="colorManagement: true, physicallyCorrectLights: true"
     embedded
-    >
-    <a-assets>
-      <!-- 任意の3D/画像/音をプリロード -->
-      <a-asset-item id="m" src="./assets/model.glb"></a-asset-item>
-      <img id="overlay" src="./assets/overlay.png">
-      <audio id="sfx" src="./assets/sfx.mp3" preload="auto"></audio>
-    </a-assets>
-
-    <!-- カメラ -->
+  >
+    <a-assets></a-assets>
     <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-    <!-- ターゲット0に紐づくコンテンツ -->
-    <a-entity mindar-image-target="targetIndex: 0">
-
-      <!-- とりあえず箱 -->
-      <!--<a-box position="0 0 0" scale="0.5 0.5 0.5"></a-box>-->
-
-      <!-- 3Dモデル（置くなら） -->
-      <a-gltf-model src="#m" position="0 -0.1 0" scale="0.2 0.2 0.2"></a-gltf-model>
-
-      <!-- 2Dオーバーレイ（常に正面を向かせるなら billboard コンポーネント使う手も）-->
-      <a-image src="#overlay" position="0 0.35 0" scale="0.6 0.6 0.6"></a-image>
+    <a-entity id="target" mindar-image-target="targetIndex: 0">
+      <a-box position="0 0 0" scale="0.5 0.5 0.5" color="#39c"></a-box>
     </a-entity>
   </a-scene>
+
+  <script>
+    // ターゲット検出イベントの可視化
+    const t = document.getElementById('target');
+    t.addEventListener('targetFound', ()=> addLog('targetFound: 検出しました 🎯', true));
+    t.addEventListener('targetLost',  ()=> addLog('targetLost: 見失いました'));
+  </script>
 </body>
 </html>
